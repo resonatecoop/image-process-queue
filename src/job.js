@@ -3,7 +3,7 @@ import sharp from 'sharp'
 import path from 'path'
 import bytes from 'bytes'
 
-import { defaultOptions } from './config/sharp'
+import { defaultOptions, config as sharpConfig } from './config/sharp'
 
 const BASE_DATA_DIR = process.env.BASE_DATA_DIR || '/'
 
@@ -29,7 +29,7 @@ const logger = winston.createLogger({
 export const optimizeImage = async (job) => {
   const {
     filename,
-    config
+    config = sharpConfig.artwork
   } = job.data
 
   const input = path.join(BASE_DATA_DIR, `/data/media/incoming/${filename}`)
