@@ -1,15 +1,9 @@
 #!/usr/bin/env node
 
 import yargs from 'yargs'
-import Queue from 'bull'
+import { Worker } from 'bullmq'
 import winston from 'winston'
 import optimizeImageJob from './job'
-
-const REDIS_CONFIG = {
-  port: process.env.REDIS_PORT || 6379,
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  password: process.env.REDIS_PASSWORD
-}
 
 const logger = winston.createLogger({
   level: 'info',
@@ -27,48 +21,51 @@ const logger = winston.createLogger({
   ]
 })
 
-const queueOptions = {
-  redis: REDIS_CONFIG
+const workerOptions = {
+  prefix: 'justifay',
+  connection: {
+    port: process.env.REDIS_PORT || 6379,
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    password: process.env.REDIS_PASSWORD
+  }
 }
 
 yargs // eslint-disable-line
-  .command('run [name]', 'starts image processing queue', (yargs) => {
+  .command('run [name]', 'starts image processing worker', (yargs) => {
     yargs
       .positional('name', {
         type: 'string',
-        describe: 'queue name',
+        describe: 'worker name',
         default: 'convert'
       })
   }, (argv) => {
-    const queue = new Queue(argv.name, queueOptions)
+    const worker = new Worker(argv.name, optimizeImageJob, workerOptions)
 
-    queue.process(optimizeImageJob)
-
-    queue.on('error', (err) => {
+    worker.on('error', (err) => {
       logger.error(err)
     })
 
-    queue.on('failed', (job, err) => {
+    worker.on('failed', (job, err) => {
       logger.error(err)
     })
 
-    queue.on('paused', () => {
+    worker.on('paused', () => {
       logger.info('job paused')
     })
 
-    queue.on('resumed', (job) => {
+    worker.on('resumed', (job) => {
       logger.info('job resumed')
     })
 
-    queue.on('cleaned', (jobs, type) => {
+    worker.on('cleaned', (jobs, type) => {
       logger.info('job cleaned')
     })
 
-    queue.on('drained', () => {
+    worker.on('drained', () => {
       logger.info('job drained')
     })
 
-    queue.on('removed', (job) => {
+    worker.on('removed', (job) => {
       logger.info('job removed')
     })
   })
